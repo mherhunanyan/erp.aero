@@ -5,4 +5,3 @@ export const authRouter = express.Router();
 
 authRouter.post('/signup', signupHandler);
 authRouter.post('/signin', signinHandler);
-

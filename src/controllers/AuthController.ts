@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { User } from 'models/User';
 import bcrypt from 'bcryptjs';
 import randomString from 'randomstring';
-import { client } from 'database/redis';
+import { client } from 'database/Redis';
 import { EXTAcessToken } from 'Config';
 
 export const signupHandler = async (req: Request, res: Response) => {

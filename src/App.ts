@@ -1,5 +1,5 @@
 import LoggerFactory from 'logger/Logger.factory';
-import { authRouter } from 'routes/AuthRoutes';
+import { authRouter } from 'routes/Auth';
 import { sequelize } from 'database/Sequelize';
 import bodyParser from 'body-parser';
 import { PORT } from 'Config';
