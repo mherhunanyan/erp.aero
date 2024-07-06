@@ -4,10 +4,16 @@ import randomString from 'randomstring';
 import { redis } from 'database/Redis';
 import { User } from 'models/User';
 import bcrypt from 'bcryptjs';
+import LoggerFactory from 'logger/Logger.factory';
 
 export const signupHandler = async (req: Request, res: Response, next: NextFunction) => {
+    const logger = LoggerFactory.getLogger('signupHandler');
     try {
         const { id, password } = req.body;
+        if (!password || !id) {
+            return res.status(409).json({ message: 'Invalid credentials' });
+        }
+
         const user = await User.findOne({ where: { id } });
         if (user) {
             return res.status(409).json({ message: 'User already exists' });
@@ -21,13 +27,17 @@ export const signupHandler = async (req: Request, res: Response, next: NextFunct
         });
         next();
     } catch (error) {
-        return res.status(409).json({ message: 'Invalid credentials' });
+        logger.error(error as string);
     }
 };
 
 export const signinHandler = async (req: Request, res: Response, next: NextFunction) => {
+    const logger = LoggerFactory.getLogger('signinHandler');
     try {
         const { id, password } = req.body;
+        if (!password || !id) {
+            return res.status(409).json({ message: 'Invalid credentials' });
+        }
 
         const user = await User.findOne({ where: { id } });
         if (!user) {
@@ -35,6 +45,7 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
+
         if (isMatch) {
             const newAccessToken = randomString.generate(10);
             await redis.set(newAccessToken, id, { EX: EXAcessToken });
@@ -47,15 +58,21 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
                 newRefreshToken,
             });
             next();
+        } else {
+            return res.status(401).json({ message: 'Invalid credentials' });
         }
     } catch (error) {
-        return res.status(401).json({ message: 'Invalid credentials' });
+        logger.error(error as string);
     }
 };
 
 export const siginNewTokenHandler = async (req: Request, res: Response, next: NextFunction) => {
+    const logger = LoggerFactory.getLogger('siginNewTokenHandler');
     try {
         const { refreshToken } = req.body;
+        if (!refreshToken) {
+            res.status(401).json({ message: 'Access denied. No refresh token provided.' });
+        }
         const user = await redis.get(refreshToken);
         if (user) {
             const newAccessToken = randomString.generate(10);
@@ -64,11 +81,11 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
                 message: 'token is updated',
                 newAccessToken,
             });
+            next();
         } else {
-            return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
+            return res.status(401).json({ message: 'Wrong Refresh token.' });
         }
-        next();
     } catch (error) {
-        console.log(error);
+        logger.error(error as string);
     }
 };
