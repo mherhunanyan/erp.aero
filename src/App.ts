@@ -1,6 +1,6 @@
 import LoggerFactory from 'logger/Logger.factory';
-import { authRouter } from 'routes/Auth';
 import { sequelize } from 'database/Sequelize';
+import { authRouter } from 'routes/Auth';
 import bodyParser from 'body-parser';
 import { PORT } from 'Config';
 import express from 'express';
@@ -22,10 +22,7 @@ const init = async () => {
             await sequelize.sync({ alter: true });
             logger.info('All models were synchronized successfully.');
         } catch (error) {
-            logger.error(
-                'process synchronization db was failed',
-                error as string,
-            );
+            logger.error('process synchronization db was failed', error as string);
         }
     } catch (error) {
         logger.error('Unable to connect to the database:', error as string);

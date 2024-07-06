@@ -1,13 +1,9 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
+import randomString from 'randomstring';
+import { redis } from 'database/Redis';
+import { EXAcessToken } from 'Config';
 import { User } from 'models/User';
 import bcrypt from 'bcryptjs';
-import randomString from 'randomstring';
-import { client } from 'database/Redis';
-import { EXTAcessToken } from 'Config';
-
-interface UserRequest extends Request {
-    userId?: number;
-}
 
 export const signupHandler = async (req: Request, res: Response) => {
     const { id, password } = req.body;
@@ -23,8 +19,9 @@ export const signupHandler = async (req: Request, res: Response) => {
     });
 };
 
-export const signinHandler = async (req: UserRequest, res: Response) => {
+export const signinHandler = async (req: Request, res: Response, next: NextFunction) => {
     const { id, password } = req.body;
+
     const user = await User.findOne({ where: { id } });
     if (!user) {
         return res.status(401).json({ message: 'Invalid credentials' });
@@ -34,11 +31,13 @@ export const signinHandler = async (req: UserRequest, res: Response) => {
     if (!isMath) {
         return res.status(401).json({ message: 'Invalid credentials' });
     }
-    const randomStr: string = randomString.generate(10);
-    await client.set(id, randomStr, { EX: EXTAcessToken });
-    req.userId = id;
+
+    const newAccessToken = randomString.generate(10);
+    await redis.set(newAccessToken, id, { EX: EXAcessToken });
 
     res.status(200).json({
         message: 'Sign-in successful',
+        newAccessToken,
     });
+    next();
 };
