@@ -9,7 +9,7 @@ export class User extends Model {
 User.init(
     {
         id: {
-            type: DataTypes.STRING,
+            type: DataTypes.NUMBER,
             primaryKey: true,
             allowNull: false,
         },

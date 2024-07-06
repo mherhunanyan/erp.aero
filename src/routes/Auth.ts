@@ -1,7 +1,7 @@
 import { signinHandler, signupHandler } from 'controllers/AuthController';
-import express from 'express';
+import { Router } from 'express';
 
-export const authRouter = express.Router();
+export const authRouter = Router();
 
 authRouter.post('/signup', signupHandler);
 authRouter.post('/signin', signinHandler);

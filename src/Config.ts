@@ -12,6 +12,6 @@ export const { PORT, database, NODE_ENV, EXTAcessToken, EXTRefreshToken } = {
     },
     NODE_ENV: process.env.NODE_ENV,
     PORT: process.env.PORT || 3000,
-    EXTAcessToken: 600000, // 10min
-    EXTRefreshToken: 604800000, // 7days
+    EXTAcessToken: Number(process.env.EXTAcessToken || 600), // 10min
+    EXTRefreshToken: Number(process.env.EXTRefreshToken || 604800), // 7days
 };

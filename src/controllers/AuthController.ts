@@ -5,6 +5,10 @@ import randomString from 'randomstring';
 import { client } from 'database/Redis';
 import { EXTAcessToken } from 'Config';
 
+interface UserRequest extends Request {
+    userId?: number;
+}
+
 export const signupHandler = async (req: Request, res: Response) => {
     const { id, password } = req.body;
     const user = await User.findOne({ where: { id } });
@@ -19,7 +23,7 @@ export const signupHandler = async (req: Request, res: Response) => {
     });
 };
 
-export const signinHandler = async (req: Request, res: Response) => {
+export const signinHandler = async (req: UserRequest, res: Response) => {
     const { id, password } = req.body;
     const user = await User.findOne({ where: { id } });
     if (!user) {
@@ -32,6 +36,7 @@ export const signinHandler = async (req: Request, res: Response) => {
     }
     const randomStr: string = randomString.generate(10);
     await client.set(id, randomStr, { EX: EXTAcessToken });
+    req.userId = id;
 
     res.status(200).json({
         message: 'Sign-in successful',
