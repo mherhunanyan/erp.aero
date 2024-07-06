@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import randomString from 'randomstring';
 import { redis } from 'database/Redis';
-import { EXAcessToken } from 'Config';
+import { EXAcessToken, EXRefreshToken } from 'Config';
 import { User } from 'models/User';
 import bcrypt from 'bcryptjs';
 
@@ -34,10 +34,28 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
 
     const newAccessToken = randomString.generate(10);
     await redis.set(newAccessToken, id, { EX: EXAcessToken });
+    const newRefreshToken = randomString.generate(10);
+    await redis.set(newRefreshToken, id), { EX: EXRefreshToken };
 
     res.status(200).json({
         message: 'Sign-in successful',
         newAccessToken,
+        newRefreshToken,
     });
     next();
+};
+
+export const siginNewTokenHandler = async (req: Request, res: Response, next: NextFunction) => {
+    const refreshToken = req.body;
+    const user = await redis.get(refreshToken);
+    if (user) {
+        const newAccessToken = randomString.generate(10);
+        await redis.set(newAccessToken, user, { EX: EXAcessToken });
+        res.status(200).json({
+            message: 'token is updated',
+            newAccessToken,
+        });
+    } else {
+        return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
+    }
 };
