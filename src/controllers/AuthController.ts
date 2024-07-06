@@ -58,4 +58,5 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
     } else {
         return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
     }
+    next();
 };
