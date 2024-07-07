@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
 import { EXAcessToken, EXRefreshToken } from 'Config';
+import LoggerFactory from 'logger/Logger.factory';
 import randomString from 'randomstring';
 import { redis } from 'database/Redis';
 import { User } from 'models/User';
 import bcrypt from 'bcryptjs';
-import LoggerFactory from 'logger/Logger.factory';
 
 export const signupHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('signupHandler');
@@ -25,7 +25,7 @@ export const signupHandler = async (req: Request, res: Response, next: NextFunct
         res.status(201).json({
             message: 'User created successfully',
         });
-        next();
+        return next();
     } catch (error) {
         logger.error(error as string);
     }
@@ -57,7 +57,7 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
                 newAccessToken,
                 newRefreshToken,
             });
-            next();
+            return next();
         } else {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
@@ -71,7 +71,7 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
     try {
         const { refreshToken } = req.body;
         if (!refreshToken) {
-            res.status(401).json({ message: 'Access denied. No refresh token provided.' });
+            return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
         }
         const user = await redis.get(refreshToken);
         if (user) {
@@ -81,9 +81,42 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
                 message: 'token is updated',
                 newAccessToken,
             });
-            next();
+            return next();
         } else {
             return res.status(401).json({ message: 'Wrong Refresh token.' });
+        }
+    } catch (error) {
+        logger.error(error as string);
+    }
+};
+
+export const logutHandler = async (req: Request, res: Response, next: NextFunction) => {
+    const logger = LoggerFactory.getLogger('logutHandler');
+    try {
+        const { accessToken, refreshToken } = req.body;
+        if (!accessToken && !refreshToken) {
+            return res.status(401).json({ message: 'Access denied. No token provided.' });
+        } else if (!accessToken) {
+            return res.status(401).json({ message: 'Access denied. No access token provided.' });
+        } else if (!refreshToken) {
+            return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
+        }
+
+        const isDeletedAccessToken = await redis.del(accessToken);
+        const isDeletedRefreshToken = await redis.del(refreshToken);
+        if (isDeletedAccessToken && isDeletedRefreshToken) {
+            res.status(200).json({ message: 'Tokens successfully deleted.' });
+            return next();
+        } else if (isDeletedAccessToken) {
+            res.status(200).json({ message: 'Access token successfully deleted.' });
+            return next();
+        } else if (isDeletedRefreshToken) {
+            res.status(200).json({ message: 'Refresh token successfully deleted.' });
+            return next();
+        } else {
+            return res.status(200).json({
+                message: 'No active session found or already logged out.',
+            });
         }
     } catch (error) {
         logger.error(error as string);
