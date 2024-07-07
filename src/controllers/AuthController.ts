@@ -5,7 +5,6 @@ import randomString from 'randomstring';
 import { redis } from 'database/Redis';
 import { User } from 'models/User';
 import bcrypt from 'bcryptjs';
-import { deleteKeysByValue } from 'util/DeleteKeysByValue';
 
 export const signupHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('signupHandler');
@@ -48,15 +47,18 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (isMatch) {
-            const newAccessToken = randomString.generate(10);
-            await redis.set(newAccessToken, id, { EX: EXAcessToken });
-            const newRefreshToken = randomString.generate(10);
-            await redis.set(newRefreshToken, id), { EX: EXRefreshToken };
+            const accessToken = randomString.generate(10);
+            const refreshToken = randomString.generate(10);
+
+            await redis.hSet(accessToken, { id, refreshToken });
+            await redis.expire(accessToken, EXAcessToken);
+            await redis.hSet(refreshToken, { id, accessToken });
+            await redis.expire(refreshToken, EXRefreshToken);
 
             res.status(200).json({
                 message: 'Sign-in successful',
-                newAccessToken,
-                newRefreshToken,
+                accessToken,
+                refreshToken,
             });
             return next();
         } else {
@@ -74,13 +76,19 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
         if (!refreshToken) {
             return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
         }
-        const userId = await redis.get(refreshToken);
+        const userId = await redis.hGet(refreshToken, 'id');
         if (userId) {
-            const newAccessToken = randomString.generate(10);
-            await redis.set(newAccessToken, userId, { EX: EXAcessToken });
+            const existingAccessToken = await redis.hGet(refreshToken, 'accessToken');
+            if (existingAccessToken) {
+                await redis.del(existingAccessToken);
+            }
+            const accessToken = randomString.generate(10);
+
+            await redis.hSet(accessToken, { id: userId, refreshToken });
+            await redis.expire(accessToken, EXAcessToken);
             res.status(200).json({
                 message: 'token is updated',
-                newAccessToken,
+                accessToken,
             });
             return next();
         } else {
@@ -91,16 +99,20 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
     }
 };
 
-export const logutHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const logoutHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('logutHandler');
     try {
         const { accessToken } = req.body;
         if (!accessToken) {
             return res.status(401).json({ message: 'Access denied. No access token provided.' });
         }
-        const userId = await redis.get(accessToken);
+        const userId = await redis.hGet(accessToken, 'id');
         if (userId) {
-            await deleteKeysByValue(userId);
+            const existingRefreshToken = await redis.hGet(accessToken, 'refreshToken');
+            if (existingRefreshToken) {
+                await redis.del(existingRefreshToken);
+            }
+            await redis.del(accessToken);
             res.status(200).json({ message: 'Access token successfully deleted.' });
             return next();
         } else {
