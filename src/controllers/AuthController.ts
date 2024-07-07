@@ -48,18 +48,18 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (isMatch) {
-            const accessToken = randomString.generate(10);
-            const refreshToken = randomString.generate(10);
+            const newAccessToken = randomString.generate(10);
+            const newRefreshToken = randomString.generate(10);
 
-            await redis.hSet(accessToken, { userId: id, refreshToken });
-            await redis.expire(accessToken, EXACCESSTOKEN);
-            await redis.hSet(refreshToken, { userId: id, accessToken });
-            await redis.expire(refreshToken, EXREFRESHTOKEN);
+            await redis.hSet(newAccessToken, { userId: id, refreshToken: newRefreshToken });
+            await redis.expire(newAccessToken, EXACCESSTOKEN);
+            await redis.hSet(newRefreshToken, { userId: id, accessToken: newAccessToken });
+            await redis.expire(newRefreshToken, EXREFRESHTOKEN);
 
             res.status(200).json({
                 message: 'Sign-in successful',
-                accessToken,
-                refreshToken,
+                newAccessToken,
+                newRefreshToken,
             });
             return next();
         } else {
@@ -83,13 +83,13 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
             if (existingAccessToken) {
                 await redis.del(existingAccessToken);
             }
-            const accessToken = randomString.generate(10);
+            const newAccessToken = randomString.generate(10);
 
-            await redis.hSet(accessToken, { userId, refreshToken });
-            await redis.expire(accessToken, EXACCESSTOKEN);
+            await redis.hSet(newAccessToken, { userId, refreshToken });
+            await redis.expire(newAccessToken, EXACCESSTOKEN);
             res.status(200).json({
                 message: 'token is updated',
-                accessToken,
+                newAccessToken,
             });
             return next();
         } else {
