@@ -1,10 +1,10 @@
+import { Router } from 'express';
 import {
     logutHandler,
     siginNewTokenHandler,
     signinHandler,
     signupHandler,
 } from 'controllers/AuthController';
-import { Router } from 'express';
 
 export const authRouter = Router();
 
