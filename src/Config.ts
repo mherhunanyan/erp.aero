@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-export const { PORT, database, NODE_ENV, EXAcessToken, EXRefreshToken } = {
+export const { PORT, database, NODE_ENV, EXACCESSTOKEN, EXREFRESHTOKEN } = {
     database: {
         host: process.env.DB_HOST,
         username: process.env.DB_USERNAME || 'root',
@@ -12,6 +12,6 @@ export const { PORT, database, NODE_ENV, EXAcessToken, EXRefreshToken } = {
     },
     NODE_ENV: process.env.NODE_ENV,
     PORT: process.env.PORT || 3000,
-    EXAcessToken: Number(process.env.EXTAcessToken || 600), // 10min
-    EXRefreshToken: Number(process.env.EXTRefreshToken || 604800), // 7days
+    EXACCESSTOKEN: Number(process.env.EXACCESSTOKEN || 600), // 10min
+    EXREFRESHTOKEN: Number(process.env.EXREFRESHTOKEN || 604800), // 7days
 };
