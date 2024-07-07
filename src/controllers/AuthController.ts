@@ -5,6 +5,7 @@ import randomString from 'randomstring';
 import { redis } from 'database/Redis';
 import { User } from 'models/User';
 import bcrypt from 'bcryptjs';
+import { deleteKeysByValue } from 'util/DeleteKeysByValue';
 
 export const signupHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('signupHandler');
@@ -73,10 +74,10 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
         if (!refreshToken) {
             return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
         }
-        const user = await redis.get(refreshToken);
-        if (user) {
+        const userId = await redis.get(refreshToken);
+        if (userId) {
             const newAccessToken = randomString.generate(10);
-            await redis.set(newAccessToken, user, { EX: EXAcessToken });
+            await redis.set(newAccessToken, userId, { EX: EXAcessToken });
             res.status(200).json({
                 message: 'token is updated',
                 newAccessToken,
@@ -93,25 +94,14 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
 export const logutHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('logutHandler');
     try {
-        const { accessToken, refreshToken } = req.body;
-        if (!accessToken && !refreshToken) {
-            return res.status(401).json({ message: 'Access denied. No token provided.' });
-        } else if (!accessToken) {
+        const { accessToken } = req.body;
+        if (!accessToken) {
             return res.status(401).json({ message: 'Access denied. No access token provided.' });
-        } else if (!refreshToken) {
-            return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
         }
-
-        const isDeletedAccessToken = await redis.del(accessToken);
-        const isDeletedRefreshToken = await redis.del(refreshToken);
-        if (isDeletedAccessToken && isDeletedRefreshToken) {
-            res.status(200).json({ message: 'Tokens successfully deleted.' });
-            return next();
-        } else if (isDeletedAccessToken) {
+        const userId = await redis.get(accessToken);
+        if (userId) {
+            await deleteKeysByValue(userId);
             res.status(200).json({ message: 'Access token successfully deleted.' });
-            return next();
-        } else if (isDeletedRefreshToken) {
-            res.status(200).json({ message: 'Refresh token successfully deleted.' });
             return next();
         } else {
             return res.status(200).json({
