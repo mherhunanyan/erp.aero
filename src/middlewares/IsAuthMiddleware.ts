@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import LoggerFactory from 'logger/Logger.factory';
 import { redis } from 'database/Redis';
-import { USERID } from 'Constants';
 
 export const IsAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('IsAuthMiddleware');
