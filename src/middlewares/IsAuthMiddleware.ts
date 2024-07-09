@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import LoggerFactory from 'logger/Logger.factory';
 import { redis } from 'database/Redis';
 
-export const IsAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+export const isAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('IsAuthMiddleware');
     try {
         const { accessToken } = req.body;
