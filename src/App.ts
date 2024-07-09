@@ -1,18 +1,20 @@
 import LoggerFactory from 'logger/Logger.factory';
 import { sequelize } from 'database/Sequelize';
-import { authRouter } from 'routes/Auth';
+import { authRouter } from 'routes/AuthRouter';
+import { fileRouter } from 'routes/FileRouter';
 import bodyParser from 'body-parser';
 import { PORT } from 'Config';
 import express from 'express';
 import cors from 'cors';
 
+const logger = LoggerFactory.getLogger('App');
 const app = express();
 
-const logger = LoggerFactory.getLogger('App');
 app.use(cors());
 app.use(bodyParser.json());
 
 app.use(authRouter);
+app.use('/file', fileRouter);
 
 const init = async () => {
     try {
