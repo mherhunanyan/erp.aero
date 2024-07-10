@@ -29,6 +29,7 @@ export const signupHandler = async (req: Request, res: Response, next: NextFunct
         return next();
     } catch (error) {
         logger.error(error as string);
+        return res.status(500).json({ message: 'Internal server error' });
     }
 };
 
@@ -67,6 +68,7 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
         }
     } catch (error) {
         logger.error(error as string);
+        return res.status(500).json({ message: 'Internal server error' });
     }
 };
 
@@ -97,6 +99,7 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
         }
     } catch (error) {
         logger.error(error as string);
+        return res.status(500).json({ message: 'Internal server error' });
     }
 };
 
@@ -123,5 +126,6 @@ export const logoutHandler = async (req: Request, res: Response, next: NextFunct
         }
     } catch (error) {
         logger.error(error as string);
+        return res.status(500).json({ message: 'Internal server error' });
     }
 };

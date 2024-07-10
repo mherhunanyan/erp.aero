@@ -22,21 +22,18 @@ File.init(
         },
         extension: {
             type: DataTypes.STRING,
-            // allowNull: false,
         },
         mimeType: {
             type: DataTypes.STRING,
-            // allowNull: false,
         },
         size: {
             type: DataTypes.INTEGER,
-            // allowNull: false,
         },
     },
     {
         sequelize,
         modelName: 'File',
-        createdAt: false,
-        updatedAt: true,
+        createdAt: true,
+        updatedAt: false,
     },
 );
