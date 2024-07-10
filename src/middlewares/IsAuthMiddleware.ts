@@ -18,5 +18,6 @@ export const isAuthMiddleware = async (req: Request, res: Response, next: NextFu
         }
     } catch (error) {
         logger.error(error as string);
+        return res.status(500).json({ message: 'Internal server error' });
     }
 };

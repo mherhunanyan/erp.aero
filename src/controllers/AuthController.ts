@@ -129,3 +129,19 @@ export const logoutHandler = async (req: Request, res: Response, next: NextFunct
         return res.status(500).json({ message: 'Internal server error' });
     }
 };
+
+export const getInfoHandler = async (req: Request, res: Response, next: NextFunction) => {
+    const logger = LoggerFactory.getLogger('getInfoHandler');
+    try {
+        const { accessToken } = req.body;
+        const userId = await redis.hGet(accessToken, USERID);
+        if (!userId) {
+            res.status(401).json({ message: 'User does not exist.' });
+        }
+        res.send({ userId });
+        return next();
+    } catch (error) {
+        logger.error(error as string);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
