@@ -3,6 +3,8 @@ import LoggerFactory from 'logger/Logger.factory';
 import { unlinkSync } from 'node:fs';
 import { File } from 'models/File';
 import randomString from 'randomstring';
+import path from 'path';
+import fs from 'fs';
 
 export const fileUploadHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('fileUploadHandler');
@@ -15,7 +17,8 @@ export const fileUploadHandler = async (req: Request, res: Response, next: NextF
         const fileId = randomString.generate(10);
 
         await File.create({ id: fileId, name: filename, extension, mimetype, size });
-        return res.status(200).json({ message: 'File uploaded successfully!', fileId });
+        res.status(200).json({ message: 'File uploaded successfully!', fileId });
+        return next();
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
@@ -61,6 +64,26 @@ export const deleteFileHandler = async (req: Request, res: Response, next: NextF
         } else {
             return res.status(404).json({ message: 'File ID not found.' });
         }
+    } catch (error) {
+        logger.error(error as string);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+export const downloadFileHandler = async (req: Request, res: Response, next: NextFunction) => {
+    const logger = LoggerFactory.getLogger('downloadFileHandler');
+    try {
+        const fileId = req.params.id;
+        const file = await File.findOne({ where: { id: fileId } });
+        if (!file) {
+            logger.warn(`File with ID ${fileId} not found`);
+            return res.status(404).json({ message: 'File not found' });
+        }
+        const fileName = file.name;
+        const fileDirPath = path.join(__dirname, '../../uploads');
+        const filePath = path.join(fileDirPath, `/${fileName}`);
+        res.sendFile(filePath);
+        return next();
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
