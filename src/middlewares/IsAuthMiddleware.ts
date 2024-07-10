@@ -5,7 +5,7 @@ import { redis } from 'database/Redis';
 export const isAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('IsAuthMiddleware');
     try {
-        const { accessToken } = req.body;
+        const accessToken = req.headers.accesstoken as string;
         if (!accessToken) {
             res.status(401).json({ message: 'Access denied. No access token provided.' });
         }

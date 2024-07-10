@@ -75,7 +75,7 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
 export const siginNewTokenHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('siginNewTokenHandler');
     try {
-        const { refreshToken } = req.body;
+        const refreshToken = req.headers.refreshtoken as string;
         if (!refreshToken) {
             return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
         }
@@ -106,7 +106,7 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
 export const logoutHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('logutHandler');
     try {
-        const { accessToken } = req.body;
+        const accessToken = req.headers.accesstoken as string;
         if (!accessToken) {
             return res.status(401).json({ message: 'Access denied. No access token provided.' });
         }
@@ -133,7 +133,7 @@ export const logoutHandler = async (req: Request, res: Response, next: NextFunct
 export const getInfoHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('getInfoHandler');
     try {
-        const { accessToken } = req.body;
+        const accessToken = req.headers.accesstoken as string;
         const userId = await redis.hGet(accessToken, USERID);
         if (!userId) {
             res.status(401).json({ message: 'User does not exist.' });

@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import LoggerFactory from 'logger/Logger.factory';
+import { unlinkSync } from 'node:fs';
 import { File } from 'models/File';
+import randomString from 'randomstring';
 
 export const fileUploadHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('fileUploadHandler');
@@ -10,10 +12,10 @@ export const fileUploadHandler = async (req: Request, res: Response, next: NextF
         }
         const { filename, originalname, mimetype, size } = req.file;
         const extension = originalname.split('.').pop();
+        const fileId = randomString.generate(10);
 
-        await File.create({ name: filename, extension, mimetype, size });
-
-        return res.status(200).json({ message: 'File uploaded successfully!' });
+        await File.create({ id: fileId, name: filename, extension, mimetype, size });
+        return res.status(200).json({ message: 'File uploaded successfully!', fileId });
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
@@ -48,6 +50,7 @@ export const deleteFileHandler = async (req: Request, res: Response, next: NextF
         }
         const file = await File.destroy({ where: { name: fileId } });
         if (file) {
+            unlinkSync(`uploads/${fileId}`);
             res.status(200).json({
                 message: 'file is successfully deleted',
             });
