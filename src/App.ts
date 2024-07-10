@@ -1,3 +1,4 @@
+import { isAuthMiddleware } from 'middlewares/IsAuthMiddleware';
 import LoggerFactory from 'logger/Logger.factory';
 import { sequelize } from 'database/Sequelize';
 import { authRouter } from 'routes/AuthRouter';
@@ -14,7 +15,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 app.use(authRouter);
-app.use('/file', fileRouter);
+app.use('/file', isAuthMiddleware, fileRouter);
 
 const init = async () => {
     try {

@@ -29,7 +29,7 @@ export const getFileHandler = async (req: Request, res: Response, next: NextFunc
         if (!fileId) {
             return res.status(400).json({ message: 'No file ID is provided.' });
         }
-        const file = await File.findOne({ where: { name: fileId } });
+        const file = await File.findOne({ where: { id: fileId } });
         if (!file) {
             return res.status(404).json({ message: 'File ID not found.' });
         }
@@ -48,9 +48,12 @@ export const deleteFileHandler = async (req: Request, res: Response, next: NextF
         if (!fileId) {
             res.send(400).json({ message: 'No file ID is provided' });
         }
-        const file = await File.destroy({ where: { name: fileId } });
+        const file = await File.findOne({ where: { id: fileId } });
         if (file) {
-            unlinkSync(`uploads/${fileId}`);
+            unlinkSync(`uploads/${file.name}`);
+        }
+        const isDestroyed = await File.destroy({ where: { id: fileId } });
+        if (isDestroyed) {
             res.status(200).json({
                 message: 'file is successfully deleted',
             });
