@@ -12,7 +12,8 @@ export const uploadFileHandler = async (req: Request, res: Response, next: NextF
             return res.status(400).send('No files were uploaded.');
         }
         const { filename, originalname, mimetype, size } = req.file;
-        const extension = originalname.split('.').pop();
+        const extension = path.extname(originalname);
+
         const fileId = randomString.generate(10);
 
         await File.create({ id: fileId, name: filename, extension, mimetype, size });
@@ -54,10 +55,9 @@ export const deleteFileHandler = async (req: Request, res: Response, next: NextF
         }
         const isDestroyed = await File.destroy({ where: { id: fileId } });
         if (isDestroyed) {
-            res.status(200).json({
+            return res.status(200).json({
                 message: 'file is successfully deleted',
             });
-            return next();
         } else {
             return res.status(404).json({ message: 'File ID not found.' });
         }
@@ -79,8 +79,7 @@ export const downloadFileHandler = async (req: Request, res: Response, next: Nex
         const fileName = file.name;
         const fileDirPath = path.join(__dirname, '../../uploads');
         const filePath = path.join(fileDirPath, `/${fileName}`);
-        res.sendFile(filePath);
-        return next();
+        return res.sendFile(filePath);
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
@@ -94,7 +93,7 @@ export const updatefileHandler = async (req: Request, res: Response, next: NextF
             return res.status(400).send('No files were uploaded.');
         }
         const { filename, originalname, mimetype, size } = req.file;
-        const extension = originalname.split('.').pop();
+        const extension = path.extname(originalname);
         const fileId = req.params.id;
         if (!fileId) {
             return res.status(400).json({ message: 'No file ID is provided.' });
@@ -105,6 +104,7 @@ export const updatefileHandler = async (req: Request, res: Response, next: NextF
             logger.warn(`File with ID ${fileId} not found`);
             return res.status(404).json({ message: 'File not found' });
         }
+        unlinkSync(`uploads/${file.name}`);
         file.set({ name: filename, extension, mimetype, size });
         await file.save();
 
