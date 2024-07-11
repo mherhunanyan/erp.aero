@@ -108,8 +108,7 @@ export const updatefileHandler = async (req: Request, res: Response, next: NextF
         file.set({ name: filename, extension, mimetype, size });
         await file.save();
 
-        res.status(200).json({ message: 'File updated successfully', file });
-        return next();
+        return res.status(200).json({ message: 'File updated successfully', file });
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
