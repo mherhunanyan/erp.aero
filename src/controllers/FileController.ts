@@ -4,9 +4,8 @@ import { unlinkSync } from 'node:fs';
 import { File } from 'models/File';
 import randomString from 'randomstring';
 import path from 'path';
-import fs from 'fs';
 
-export const fileUploadHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const uploadFileHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('fileUploadHandler');
     try {
         if (!req.file) {
@@ -83,6 +82,35 @@ export const downloadFileHandler = async (req: Request, res: Response, next: Nex
         const fileDirPath = path.join(__dirname, '../../uploads');
         const filePath = path.join(fileDirPath, `/${fileName}`);
         res.sendFile(filePath);
+        return next();
+    } catch (error) {
+        logger.error(error as string);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+export const updatefileHandler = async (req: Request, res: Response, next: NextFunction) => {
+    const logger = LoggerFactory.getLogger('updatefileHandler');
+    try {
+        if (!req.file) {
+            return res.status(400).send('No files were uploaded.');
+        }
+        const { filename, originalname, mimetype, size } = req.file;
+        const extension = originalname.split('.').pop();
+        const fileId = req.params.id;
+        if (!fileId) {
+            return res.status(400).json({ message: 'No file ID is provided.' });
+        }
+        const file = await File.findOne({ where: { id: fileId } });
+
+        if (!file) {
+            logger.warn(`File with ID ${fileId} not found`);
+            return res.status(404).json({ message: 'File not found' });
+        }
+        file.set({ name: filename, extension, mimetype, size });
+        await file.save();
+
+        res.status(200).json({ message: 'File updated successfully', file });
         return next();
     } catch (error) {
         logger.error(error as string);
