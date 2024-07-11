@@ -23,3 +23,9 @@ npm run dev
 ```bash
 npm start
 ```
+
+## Format code style
+
+```bash
+npm run format
+```
