@@ -15,7 +15,7 @@ export const signupHandler = async (req: Request, res: Response, next: NextFunct
             return res.status(409).json({ message: 'Invalid credentials' });
         }
 
-        const user = await User.findOne({ where: { id } });
+        const user = await User.findByPk(id);
         if (user) {
             return res.status(409).json({ message: 'User already exists' });
         }
@@ -41,7 +41,7 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
             return res.status(409).json({ message: 'Invalid credentials' });
         }
 
-        const user = await User.findOne({ where: { id } });
+        const user = await User.findByPk(id);
         if (!user) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }

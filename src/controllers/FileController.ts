@@ -1,12 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
 import LoggerFactory from 'logger/Logger.factory';
+import randomString from 'randomstring';
 import { unlinkSync } from 'node:fs';
 import { File } from 'models/File';
-import randomString from 'randomstring';
 import path from 'path';
 
 export const uploadFileHandler = async (req: Request, res: Response, next: NextFunction) => {
-    const logger = LoggerFactory.getLogger('fileUploadHandler');
+    const logger = LoggerFactory.getLogger('uploadFileHandler');
     try {
         if (!req.file) {
             return res.status(400).send('No files were uploaded.');
@@ -31,7 +31,7 @@ export const getFileHandler = async (req: Request, res: Response, next: NextFunc
         if (!fileId) {
             return res.status(400).json({ message: 'No file ID is provided.' });
         }
-        const file = await File.findOne({ where: { id: fileId } });
+        const file = await File.findByPk(fileId);
         if (!file) {
             return res.status(404).json({ message: 'File ID not found.' });
         }
@@ -50,7 +50,7 @@ export const deleteFileHandler = async (req: Request, res: Response, next: NextF
         if (!fileId) {
             res.send(400).json({ message: 'No file ID is provided' });
         }
-        const file = await File.findOne({ where: { id: fileId } });
+        const file = await File.findByPk(fileId);
         if (file) {
             unlinkSync(`uploads/${file.name}`);
         }
@@ -73,7 +73,7 @@ export const downloadFileHandler = async (req: Request, res: Response, next: Nex
     const logger = LoggerFactory.getLogger('downloadFileHandler');
     try {
         const fileId = req.params.id;
-        const file = await File.findOne({ where: { id: fileId } });
+        const file = await File.findByPk(fileId);
         if (!file) {
             logger.warn(`File with ID ${fileId} not found`);
             return res.status(404).json({ message: 'File not found' });
@@ -101,7 +101,7 @@ export const updatefileHandler = async (req: Request, res: Response, next: NextF
         if (!fileId) {
             return res.status(400).json({ message: 'No file ID is provided.' });
         }
-        const file = await File.findOne({ where: { id: fileId } });
+        const file = await File.findByPk(fileId);
 
         if (!file) {
             logger.warn(`File with ID ${fileId} not found`);
@@ -112,6 +112,19 @@ export const updatefileHandler = async (req: Request, res: Response, next: NextF
 
         res.status(200).json({ message: 'File updated successfully', file });
         return next();
+    } catch (error) {
+        logger.error(error as string);
+        return res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+export const getListOfFilesHandler = async (req: Request, res: Response, next: NextFunction) => {
+    const logger = LoggerFactory.getLogger('getListOfFilesHandler');
+    console.log(243234);
+
+    try {
+        console.log(await File.findByPk('t7AK60sF92'));
+        res.end();
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
