@@ -1,4 +1,4 @@
-# ERP AERO
+# ERP.AERO
 
 ## Install dependencies
 
