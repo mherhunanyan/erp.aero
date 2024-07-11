@@ -120,8 +120,6 @@ export const updatefileHandler = async (req: Request, res: Response, next: NextF
 
 export const getListOfFilesHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('getListOfFilesHandler');
-    console.log(243234);
-
     try {
         console.log(await File.findByPk('t7AK60sF92'));
         res.end();
