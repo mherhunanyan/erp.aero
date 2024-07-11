@@ -23,10 +23,9 @@ export const signupHandler = async (req: Request, res: Response, next: NextFunct
         const hashedPassword = await bcrypt.hash(password, 10);
         await User.create({ id, password: hashedPassword });
 
-        res.status(201).json({
+        return res.status(201).json({
             message: 'User created successfully',
         });
-        return next();
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
@@ -57,12 +56,11 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
             await redis.hSet(newRefreshToken, { userId: id, accessToken: newAccessToken });
             await redis.expire(newRefreshToken, EXREFRESHTOKEN);
 
-            res.status(200).json({
+            return res.status(200).json({
                 message: 'Sign-in successful',
                 newAccessToken,
                 newRefreshToken,
             });
-            return next();
         } else {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
@@ -89,11 +87,10 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
 
             await redis.hSet(newAccessToken, { userId, refreshToken });
             await redis.expire(newAccessToken, EXACCESSTOKEN);
-            res.status(200).json({
+            return res.status(200).json({
                 message: 'token is updated',
                 newAccessToken,
             });
-            return next();
         } else {
             return res.status(401).json({ message: 'Wrong Refresh token.' });
         }
@@ -117,8 +114,7 @@ export const logoutHandler = async (req: Request, res: Response, next: NextFunct
                 await redis.del(existingRefreshToken);
             }
             await redis.del(accessToken);
-            res.status(200).json({ message: 'Access token successfully deleted.' });
-            return next();
+            return res.status(200).json({ message: 'Access token successfully deleted.' });
         } else {
             return res.status(200).json({
                 message: 'No active session found or already logged out.',
@@ -138,8 +134,7 @@ export const getInfoHandler = async (req: Request, res: Response, next: NextFunc
         if (!userId) {
             res.status(401).json({ message: 'User does not exist.' });
         }
-        res.send({ userId });
-        return next();
+        return res.send({ userId });
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });

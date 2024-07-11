@@ -16,8 +16,7 @@ export const uploadFileHandler = async (req: Request, res: Response, next: NextF
         const fileId = randomString.generate(10);
 
         await File.create({ id: fileId, name: filename, extension, mimetype, size });
-        res.status(200).json({ message: 'File uploaded successfully!', fileId });
-        return next();
+        return res.status(200).json({ message: 'File uploaded successfully!', fileId });
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
@@ -35,8 +34,7 @@ export const getFileHandler = async (req: Request, res: Response, next: NextFunc
         if (!file) {
             return res.status(404).json({ message: 'File ID not found.' });
         }
-        res.json(file);
-        return next();
+        return res.json(file);
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
@@ -121,8 +119,36 @@ export const updatefileHandler = async (req: Request, res: Response, next: NextF
 export const getListOfFilesHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('getListOfFilesHandler');
     try {
-        console.log(await File.findByPk('t7AK60sF92'));
-        res.end();
+        const listSize = Number(req.query.list_size);
+        const page = Number(req.query.page);
+        const filesCount = await File.count();
+
+        if (filesCount < 1) {
+            return res.status(404).json({
+                message: 'No files available.',
+            });
+        }
+
+        if (!listSize || listSize < 1) {
+            const limit = filesCount < 10 ? filesCount : 10;
+            if (page > 0) {
+                const offset = (page - 1) * limit;
+                const files = await File.findAll({ limit, offset });
+                return res.json(files);
+            } else {
+                const files = await File.findAll({ limit });
+                return res.json(files);
+            }
+        }
+        const limit = filesCount < listSize ? filesCount : listSize;
+        if (page > 0) {
+            const offset = (page - 1) * limit;
+            const files = await File.findAll({ limit, offset });
+            return res.json(files);
+        } else {
+            const files = await File.findAll({ limit });
+            return res.json(files);
+        }
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });

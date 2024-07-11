@@ -7,7 +7,7 @@ export const isAuthMiddleware = async (req: Request, res: Response, next: NextFu
     try {
         const accessToken = req.headers.accesstoken as string;
         if (!accessToken) {
-            res.status(401).json({ message: 'Access denied. No access token provided.' });
+            return res.status(401).json({ message: 'Access denied. No access token provided.' });
         }
 
         const isExistAccessToken = await redis.exists(accessToken);
