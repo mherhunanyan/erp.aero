@@ -1,16 +1,15 @@
+import { generateJwtRefreshToken } from 'utils/tokenUtils/GenerateJwtRefreshToken';
+import { generateJwtAccessToken } from 'utils/tokenUtils/GenerateJwtAccessToken';
+import { verifyJwtRefreshToken } from 'utils/tokenUtils/VerifyJwtRefreshToken';
+import { checkIfTokenIsRevoked } from 'utils/redisUtils/CheckIfTokenIsRevoked';
+import { verifyJwtAccessToken } from 'utils/tokenUtils/VerifyJwtAccessToken';
+import { markTokenAsRevoked } from 'utils/redisUtils/MarkTokenAsRevoked';
 import { NextFunction, Request, Response } from 'express';
-import { jwtConfig } from 'Config';
-import LoggerFactory from 'logger/Logger.factory';
-import { redis } from 'database/Redis';
-import { User } from 'models/User';
-import jwt, { JwtPayload } from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { ACCESSTOKEN, REFRESHTOKEN, USERID } from 'Constants';
-import { DecodedToken } from 'types/JwtTypes';
 import { getRemainingTime } from 'utils/GetRemainingTime';
-import { generateAccessToken } from 'utils/tokenUtils/GenerateAccessToken';
-import { generateRefreshToken } from 'utils/tokenUtils/GenerateRefreshToken';
-import { verifyRefreshToken } from 'utils/tokenUtils/VerifyRefreshToken';
+import LoggerFactory from 'logger/Logger.factory';
+import { User } from 'models/User';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 export const signupHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('signupHandler');
@@ -55,8 +54,8 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        const newRefreshToken = generateRefreshToken(id);
-        const newAccessToken = generateAccessToken(id, newRefreshToken);
+        const newRefreshToken = generateJwtRefreshToken(id);
+        const newAccessToken = generateJwtAccessToken(id, newRefreshToken);
 
         return res.status(200).json({
             message: 'Sign-in successful',
@@ -77,19 +76,18 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
             return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
         }
 
-        const isTokenRevoked = await redis.get(refreshToken);
+        const isTokenRevoked = await checkIfTokenIsRevoked(refreshToken);
         if (isTokenRevoked) {
             return res.status(401).send('Refresh token has been invalidated.');
         }
 
-        const decodedRefreshToken = verifyRefreshToken(refreshToken);
-
+        const decodedRefreshToken = verifyJwtRefreshToken(refreshToken);
         const { userId } = decodedRefreshToken;
         if (!userId) {
             return res.status(401).json({ message: 'Wrong Refresh token.' });
         }
 
-        const newAccessToken = generateAccessToken(userId, refreshToken);
+        const newAccessToken = generateJwtAccessToken(userId, refreshToken);
         return res.status(200).json({ message: 'token is updated', newAccessToken });
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
@@ -107,30 +105,23 @@ export const logoutHandler = async (req: Request, res: Response, next: NextFunct
     const logger = LoggerFactory.getLogger('logoutHandler');
     try {
         const accessToken = req.headers.accesstoken as string;
-        if (!accessToken) {
-            return res.status(401).json({ message: 'Access denied. No access token provided.' });
-        }
-        const decodedAccessToken = jwt.verify(
-            accessToken,
-            jwtConfig.ACCESS_TOKEN_SECRET,
-        ) as DecodedToken;
+
+        const decodedAccessToken = verifyJwtAccessToken(accessToken);
         const storedRefreshToken = decodedAccessToken.refreshToken;
         if (!storedRefreshToken) {
             return res
                 .status(200)
                 .json({ message: 'No active session found or already logged out.' });
         }
-        const decodedRefreshToken = jwt.verify(
-            storedRefreshToken,
-            jwtConfig.REFRESH_TOKEN_SECRET,
-        ) as DecodedToken;
+
+        const decodedRefreshToken = verifyJwtRefreshToken(storedRefreshToken);
 
         const remainingTimeAccessToken = getRemainingTime(decodedAccessToken);
         const remainingTimeRefreshToken = getRemainingTime(decodedRefreshToken);
-        await redis.set(ACCESSTOKEN, accessToken, { EX: remainingTimeAccessToken });
-        await redis.set(REFRESHTOKEN, storedRefreshToken, {
-            EX: remainingTimeRefreshToken,
-        });
+
+        await markTokenAsRevoked(accessToken, remainingTimeAccessToken);
+        await markTokenAsRevoked(storedRefreshToken, remainingTimeRefreshToken);
+
         return res.status(200).json({ message: 'Successfully logged out.' });
     } catch (error) {
         logger.error(error as string);
@@ -141,12 +132,12 @@ export const logoutHandler = async (req: Request, res: Response, next: NextFunct
 export const getInfoHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('getInfoHandler');
     try {
-        const accessToken = req.headers.accesstoken as string;
-        const userId = await redis.hGet(accessToken, USERID);
-        if (!userId) {
-            res.status(401).json({ message: 'User does not exist.' });
-        }
-        return res.send({ userId });
+        // const accessToken = req.headers.accesstoken as string;
+        // const userId = await redis.hGet(accessToken, USERID);
+        // if (!userId) {
+        //     res.status(401).json({ message: 'User does not exist.' });
+        // }
+        // return res.send({ userId });
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });

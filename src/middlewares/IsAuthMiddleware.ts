@@ -11,6 +11,7 @@ export const isAuthMiddleware = async (req: Request, res: Response, next: NextFu
         }
 
         const isExistAccessToken = await redis.exists(accessToken);
+
         if (isExistAccessToken) {
             return next();
         } else {
