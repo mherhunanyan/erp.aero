@@ -1,7 +1,5 @@
-import { DecodedToken } from 'types/JwtTypes';
-
-export const getRemainingTime = (decodedToken: DecodedToken) => {
+export const getRemainingTime = (tokenExpiration: number) => {
     const currentTime = Math.floor(Date.now() / 1000);
-    const remainingTime = decodedToken.exp - currentTime;
+    const remainingTime = tokenExpiration - currentTime;
     return remainingTime;
 };

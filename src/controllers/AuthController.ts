@@ -3,6 +3,7 @@ import { getRemainingTime } from 'utils/GetRemainingTime';
 import { redisUtils } from 'utils/redisUtils/RedisUtils';
 import { jwtUtils } from 'utils/tokenUtils/JwtUtils';
 import LoggerFactory from 'logger/Logger.factory';
+import { AuthRequest } from 'types/AuthTypes';
 import { User } from 'models/User';
 import bcrypt from 'bcryptjs';
 
@@ -89,25 +90,21 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
     }
 };
 
-export const logoutHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const logoutHandler = async (req: AuthRequest, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('logoutHandler');
     try {
-        const accessToken = req.headers.accesstoken as string;
-
-        const decodedAccessToken = jwtUtils.verifyJwtAccessToken(accessToken);
-        const storedRefreshToken = decodedAccessToken.refreshToken;
+        const accessToken = req.headers.accesstoken;
+        const { storedRefreshToken, accessTokenExpiration, refreshTokenExpiration } = req;
         if (!storedRefreshToken) {
             return res
                 .status(200)
                 .json({ message: 'No active session found or already logged out.' });
         }
 
-        const decodedRefreshToken = jwtUtils.verifyJwtRefreshToken(storedRefreshToken);
+        const remainingTimeAccessToken = getRemainingTime(accessTokenExpiration as number);
+        const remainingTimeRefreshToken = getRemainingTime(refreshTokenExpiration as number);
 
-        const remainingTimeAccessToken = getRemainingTime(decodedAccessToken);
-        const remainingTimeRefreshToken = getRemainingTime(decodedRefreshToken);
-
-        await redisUtils.markTokenAsRevoked(accessToken, remainingTimeAccessToken);
+        await redisUtils.markTokenAsRevoked(accessToken as string, remainingTimeAccessToken);
         await redisUtils.markTokenAsRevoked(storedRefreshToken, remainingTimeRefreshToken);
 
         return res.status(200).json({ message: 'Successfully logged out.' });
@@ -116,15 +113,14 @@ export const logoutHandler = async (req: Request, res: Response, next: NextFunct
     }
 };
 
-export const getInfoHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const getInfoHandler = async (req: AuthRequest, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('getInfoHandler');
     try {
-        // const accessToken = req.headers.accesstoken as string;
-        // const userId = await redis.hGet(accessToken, USERID);
-        // if (!userId) {
-        //     res.status(401).json({ message: 'User does not exist.' });
-        // }
-        // return res.send({ userId });
+        const userId = req.userId;
+        if (!userId) {
+            res.status(401).json({ message: 'User does not exist.' });
+        }
+        return res.send({ userId });
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
