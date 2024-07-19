@@ -1,12 +1,13 @@
 import { NextFunction, Request, Response } from 'express';
-import { ACCESS_TOKEN_SECRET, EXACCESS_TOKEN, EXREFRESH_TOKEN, REFRESH_TOKEN_SECRET } from 'Config';
+import { jwtConfig } from 'Config';
 import LoggerFactory from 'logger/Logger.factory';
-// import randomString from 'randomstring';
 import { redis } from 'database/Redis';
 import { User } from 'models/User';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { ACCESSTOKEN, REFRESHTOKEN, USERID } from 'Constants';
+import { DecodedToken } from 'types/JwtTypes';
+import { getRemainingTime } from 'utils/GetRemainingTime';
 
 export const signupHandler = async (req: Request, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('signupHandler');
@@ -47,33 +48,24 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
-
-        if (isMatch) {
-            // const newAccessToken = randomString.generate(10);
-            // const newRefreshToken = randomString.generate(10);
-
-            const newRefreshToken = jwt.sign({ userId: id }, REFRESH_TOKEN_SECRET, {
-                expiresIn: EXACCESS_TOKEN,
-            });
-            const newAccessToken = jwt.sign(
-                { userId: id, refreshToken: newRefreshToken },
-                ACCESS_TOKEN_SECRET,
-                { expiresIn: EXREFRESH_TOKEN },
-            );
-
-            // await redis.hSet(newAccessToken, { userId: id, refreshToken: newRefreshToken });
-            // await redis.expire(newAccessToken, EXACCESS_TOKEN);
-            // await redis.hSet(newRefreshToken, { userId: id, accessToken: newAccessToken });
-            // await redis.expire(newRefreshToken, EXREFRESH_TOKEN);
-
-            return res.status(200).json({
-                message: 'Sign-in successful',
-                newAccessToken,
-                newRefreshToken,
-            });
-        } else {
+        if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
+
+        const newRefreshToken = jwt.sign({ userId: id }, jwtConfig.REFRESH_TOKEN_SECRET, {
+            expiresIn: jwtConfig.REFRESH_TOKEN_EXPIRY,
+        });
+        const newAccessToken = jwt.sign(
+            { userId: id, refreshToken: newRefreshToken },
+            jwtConfig.ACCESS_TOKEN_SECRET,
+            { expiresIn: jwtConfig.ACCESS_TOKEN_EXPIRY },
+        );
+
+        return res.status(200).json({
+            message: 'Sign-in successful',
+            newAccessToken,
+            newRefreshToken,
+        });
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
@@ -87,23 +79,36 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
         if (!refreshToken) {
             return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
         }
-        // const userId = await redis.hGet(refreshToken, USERID);
-        // if (userId) {
-        //     const existingAccessToken = await redis.hGet(refreshToken, ACCESSTOKEN);
-        //     if (existingAccessToken) {
-        //         await redis.del(existingAccessToken);
-        //     }
-        //     const newAccessToken = randomString.generate(10);
 
-        //     await redis.hSet(newAccessToken, { userId, refreshToken });
-        //     await redis.expire(newAccessToken, EXACCESS_TOKEN);
-        //     return res.status(200).json({
-        //         message: 'token is updated',
-        //         newAccessToken,
-        //     });
-        // } else {
-        //     return res.status(401).json({ message: 'Wrong Refresh token.' });
-        // }
+        try {
+            const decoded = jwt.verify(
+                refreshToken,
+                jwtConfig.REFRESH_TOKEN_SECRET,
+            ) as DecodedToken;
+            const userId = decoded.userId;
+
+            if (userId) {
+                const newAccessToken = jwt.sign(
+                    { userId, refreshToken },
+                    jwtConfig.ACCESS_TOKEN_SECRET,
+                    {
+                        expiresIn: jwtConfig.ACCESS_TOKEN_EXPIRY,
+                    },
+                );
+                return res.status(200).json({ message: 'token is updated', newAccessToken });
+            } else {
+                return res.status(401).json({ message: 'Wrong Refresh token.' });
+            }
+        } catch (jwtError) {
+            if (jwtError instanceof jwt.TokenExpiredError) {
+                return res.status(403).json({ message: 'Refresh token expired.' });
+            } else if (jwtError instanceof jwt.JsonWebTokenError) {
+                return res.status(403).json({ message: 'Invalid refresh token.' });
+            } else {
+                logger.error(jwtError as string);
+                return res.status(500).json({ message: 'Internal server error handling JWT.' });
+            }
+        }
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
@@ -111,25 +116,34 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
 };
 
 export const logoutHandler = async (req: Request, res: Response, next: NextFunction) => {
-    const logger = LoggerFactory.getLogger('logutHandler');
+    const logger = LoggerFactory.getLogger('logoutHandler');
     try {
         const accessToken = req.headers.accesstoken as string;
         if (!accessToken) {
             return res.status(401).json({ message: 'Access denied. No access token provided.' });
         }
-        const userId = await redis.hGet(accessToken, USERID);
-        if (userId) {
-            const existingRefreshToken = await redis.hGet(accessToken, REFRESHTOKEN);
-            if (existingRefreshToken) {
-                await redis.del(existingRefreshToken);
-            }
-            await redis.del(accessToken);
-            return res.status(200).json({ message: 'Access token successfully deleted.' });
-        } else {
-            return res.status(200).json({
-                message: 'No active session found or already logged out.',
-            });
+        const decodedAccessToken = jwt.verify(
+            accessToken,
+            jwtConfig.ACCESS_TOKEN_SECRET,
+        ) as DecodedToken;
+        const storedRefreshToken = decodedAccessToken.refreshToken;
+        if (!storedRefreshToken) {
+            return res
+                .status(200)
+                .json({ message: 'No active session found or already logged out.' });
         }
+        const decodedRefreshToken = jwt.verify(
+            storedRefreshToken,
+            jwtConfig.REFRESH_TOKEN_SECRET,
+        ) as DecodedToken;
+
+        const remainingTimeAccessToken = getRemainingTime(decodedAccessToken);
+        const remainingTimeRefreshToken = getRemainingTime(decodedRefreshToken);
+        await redis.set(ACCESSTOKEN, accessToken, { EX: remainingTimeAccessToken });
+        await redis.set(REFRESHTOKEN, storedRefreshToken, {
+            EX: remainingTimeRefreshToken,
+        });
+        return res.status(200).json({ message: 'Successfully logged out.' });
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
