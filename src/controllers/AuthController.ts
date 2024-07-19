@@ -1,14 +1,9 @@
-import { generateJwtRefreshToken } from 'utils/tokenUtils/GenerateJwtRefreshToken';
-import { generateJwtAccessToken } from 'utils/tokenUtils/GenerateJwtAccessToken';
-import { verifyJwtRefreshToken } from 'utils/tokenUtils/VerifyJwtRefreshToken';
-import { checkIfTokenIsRevoked } from 'utils/redisUtils/CheckIfTokenIsRevoked';
-import { verifyJwtAccessToken } from 'utils/tokenUtils/VerifyJwtAccessToken';
-import { markTokenAsRevoked } from 'utils/redisUtils/MarkTokenAsRevoked';
 import { NextFunction, Request, Response } from 'express';
 import { getRemainingTime } from 'utils/GetRemainingTime';
+import { redisUtils } from 'utils/redisUtils/RedisUtils';
+import { jwtUtils } from 'utils/tokenUtils/JwtUtils';
 import LoggerFactory from 'logger/Logger.factory';
 import { User } from 'models/User';
-import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
 export const signupHandler = async (req: Request, res: Response, next: NextFunction) => {
@@ -54,8 +49,8 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        const newRefreshToken = generateJwtRefreshToken(id);
-        const newAccessToken = generateJwtAccessToken(id, newRefreshToken);
+        const newRefreshToken = jwtUtils.generateJwtRefreshToken(id);
+        const newAccessToken = jwtUtils.generateJwtAccessToken(id, newRefreshToken);
 
         return res.status(200).json({
             message: 'Sign-in successful',
@@ -76,28 +71,21 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
             return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
         }
 
-        const isTokenRevoked = await checkIfTokenIsRevoked(refreshToken);
+        const isTokenRevoked = await redisUtils.checkIfTokenIsRevoked(refreshToken);
         if (isTokenRevoked) {
             return res.status(401).send('Refresh token has been invalidated.');
         }
 
-        const decodedRefreshToken = verifyJwtRefreshToken(refreshToken);
+        const decodedRefreshToken = jwtUtils.verifyJwtRefreshToken(refreshToken);
         const { userId } = decodedRefreshToken;
         if (!userId) {
             return res.status(401).json({ message: 'Wrong Refresh token.' });
         }
 
-        const newAccessToken = generateJwtAccessToken(userId, refreshToken);
+        const newAccessToken = jwtUtils.generateJwtAccessToken(userId, refreshToken);
         return res.status(200).json({ message: 'token is updated', newAccessToken });
     } catch (error) {
-        if (error instanceof jwt.TokenExpiredError) {
-            return res.status(403).json({ message: 'Refresh token expired.' });
-        } else if (error instanceof jwt.JsonWebTokenError) {
-            return res.status(403).json({ message: 'Invalid refresh token.' });
-        } else {
-            logger.error(error as string);
-            return res.status(500).json({ message: 'Internal server error' });
-        }
+        jwtUtils.handleJwtError(error, res, logger);
     }
 };
 
@@ -106,7 +94,7 @@ export const logoutHandler = async (req: Request, res: Response, next: NextFunct
     try {
         const accessToken = req.headers.accesstoken as string;
 
-        const decodedAccessToken = verifyJwtAccessToken(accessToken);
+        const decodedAccessToken = jwtUtils.verifyJwtAccessToken(accessToken);
         const storedRefreshToken = decodedAccessToken.refreshToken;
         if (!storedRefreshToken) {
             return res
@@ -114,18 +102,17 @@ export const logoutHandler = async (req: Request, res: Response, next: NextFunct
                 .json({ message: 'No active session found or already logged out.' });
         }
 
-        const decodedRefreshToken = verifyJwtRefreshToken(storedRefreshToken);
+        const decodedRefreshToken = jwtUtils.verifyJwtRefreshToken(storedRefreshToken);
 
         const remainingTimeAccessToken = getRemainingTime(decodedAccessToken);
         const remainingTimeRefreshToken = getRemainingTime(decodedRefreshToken);
 
-        await markTokenAsRevoked(accessToken, remainingTimeAccessToken);
-        await markTokenAsRevoked(storedRefreshToken, remainingTimeRefreshToken);
+        await redisUtils.markTokenAsRevoked(accessToken, remainingTimeAccessToken);
+        await redisUtils.markTokenAsRevoked(storedRefreshToken, remainingTimeRefreshToken);
 
         return res.status(200).json({ message: 'Successfully logged out.' });
     } catch (error) {
-        logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        jwtUtils.handleJwtError(error, res, logger);
     }
 };
 

@@ -1,8 +1,10 @@
-import { NextFunction, Request, Response } from 'express';
+import { redisUtils } from 'utils/redisUtils/RedisUtils';
+import { jwtUtils } from 'utils/tokenUtils/JwtUtils';
 import LoggerFactory from 'logger/Logger.factory';
-import { redis } from 'database/Redis';
+import { NextFunction, Response } from 'express';
+import { AuthRequest } from 'types/AuthTypes';
 
-export const isAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+export const isAuthMiddleware = async (req: AuthRequest, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('IsAuthMiddleware');
     try {
         const accessToken = req.headers.accesstoken as string;
@@ -10,15 +12,16 @@ export const isAuthMiddleware = async (req: Request, res: Response, next: NextFu
             return res.status(401).json({ message: 'Access denied. No access token provided.' });
         }
 
-        const isExistAccessToken = await redis.exists(accessToken);
-
-        if (isExistAccessToken) {
-            return next();
-        } else {
-            return res.status(401).json({ message: 'Wrong access Token.' });
+        const isTokenRevoked = await redisUtils.checkIfTokenIsRevoked(accessToken);
+        if (isTokenRevoked) {
+            return res.status(401).send('Refresh token has been invalidated.');
         }
+
+        const decodedAccessToken = jwtUtils.verifyJwtAccessToken(accessToken);
+        req.userId = decodedAccessToken.userId;
+        req.accessToken = accessToken;
+        return next();
     } catch (error) {
-        logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        jwtUtils.handleJwtError(error, res, logger);
     }
 };
