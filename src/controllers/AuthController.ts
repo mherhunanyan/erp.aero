@@ -74,7 +74,7 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
 
         const isTokenRevoked = await redisUtils.checkIfTokenIsRevoked(refreshToken);
         if (isTokenRevoked) {
-            return res.status(401).send('Refresh token has been invalidated.');
+            return res.status(401).json({ message: 'Refresh token has been invalidated.' });
         }
 
         const decodedRefreshToken = jwtUtils.verifyJwtRefreshToken(refreshToken);

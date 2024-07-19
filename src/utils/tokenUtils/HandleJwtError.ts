@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 
 export const handleJwtError = (error: any, res: Response, logger: KibanaLogger) => {
     if (error instanceof jwt.TokenExpiredError) {
-        return res.status(403).json({ message: 'Refresh token expired.' });
+        return res.status(403).json({ message: 'token expired.' });
     } else if (error instanceof jwt.JsonWebTokenError) {
         return res.status(403).json({ message: 'Invalid token.' });
     } else {

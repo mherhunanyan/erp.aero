@@ -14,7 +14,7 @@ export const isAuthMiddleware = async (req: AuthRequest, res: Response, next: Ne
 
         const isTokenRevoked = await redisUtils.checkIfTokenIsRevoked(accessToken);
         if (isTokenRevoked) {
-            return res.status(401).send('Refresh token has been invalidated.');
+            return res.status(401).send('Access token has been invalidated.');
         }
 
         const decodedAccessToken = jwtUtils.verifyJwtAccessToken(accessToken);
