@@ -1,9 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
-import { EXACCESSTOKEN, EXREFRESHTOKEN } from 'Config';
+import { ACCESS_TOKEN_SECRET, EXACCESS_TOKEN, EXREFRESH_TOKEN, REFRESH_TOKEN_SECRET } from 'Config';
 import LoggerFactory from 'logger/Logger.factory';
-import randomString from 'randomstring';
+// import randomString from 'randomstring';
 import { redis } from 'database/Redis';
 import { User } from 'models/User';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { ACCESSTOKEN, REFRESHTOKEN, USERID } from 'Constants';
 
@@ -48,13 +49,22 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (isMatch) {
-            const newAccessToken = randomString.generate(10);
-            const newRefreshToken = randomString.generate(10);
+            // const newAccessToken = randomString.generate(10);
+            // const newRefreshToken = randomString.generate(10);
 
-            await redis.hSet(newAccessToken, { userId: id, refreshToken: newRefreshToken });
-            await redis.expire(newAccessToken, EXACCESSTOKEN);
-            await redis.hSet(newRefreshToken, { userId: id, accessToken: newAccessToken });
-            await redis.expire(newRefreshToken, EXREFRESHTOKEN);
+            const newRefreshToken = jwt.sign({ userId: id }, REFRESH_TOKEN_SECRET, {
+                expiresIn: EXACCESS_TOKEN,
+            });
+            const newAccessToken = jwt.sign(
+                { userId: id, refreshToken: newRefreshToken },
+                ACCESS_TOKEN_SECRET,
+                { expiresIn: EXREFRESH_TOKEN },
+            );
+
+            // await redis.hSet(newAccessToken, { userId: id, refreshToken: newRefreshToken });
+            // await redis.expire(newAccessToken, EXACCESS_TOKEN);
+            // await redis.hSet(newRefreshToken, { userId: id, accessToken: newAccessToken });
+            // await redis.expire(newRefreshToken, EXREFRESH_TOKEN);
 
             return res.status(200).json({
                 message: 'Sign-in successful',
@@ -77,23 +87,23 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
         if (!refreshToken) {
             return res.status(401).json({ message: 'Access denied. No refresh token provided.' });
         }
-        const userId = await redis.hGet(refreshToken, USERID);
-        if (userId) {
-            const existingAccessToken = await redis.hGet(refreshToken, ACCESSTOKEN);
-            if (existingAccessToken) {
-                await redis.del(existingAccessToken);
-            }
-            const newAccessToken = randomString.generate(10);
+        // const userId = await redis.hGet(refreshToken, USERID);
+        // if (userId) {
+        //     const existingAccessToken = await redis.hGet(refreshToken, ACCESSTOKEN);
+        //     if (existingAccessToken) {
+        //         await redis.del(existingAccessToken);
+        //     }
+        //     const newAccessToken = randomString.generate(10);
 
-            await redis.hSet(newAccessToken, { userId, refreshToken });
-            await redis.expire(newAccessToken, EXACCESSTOKEN);
-            return res.status(200).json({
-                message: 'token is updated',
-                newAccessToken,
-            });
-        } else {
-            return res.status(401).json({ message: 'Wrong Refresh token.' });
-        }
+        //     await redis.hSet(newAccessToken, { userId, refreshToken });
+        //     await redis.expire(newAccessToken, EXACCESS_TOKEN);
+        //     return res.status(200).json({
+        //         message: 'token is updated',
+        //         newAccessToken,
+        //     });
+        // } else {
+        //     return res.status(401).json({ message: 'Wrong Refresh token.' });
+        // }
     } catch (error) {
         logger.error(error as string);
         return res.status(500).json({ message: 'Internal server error' });
