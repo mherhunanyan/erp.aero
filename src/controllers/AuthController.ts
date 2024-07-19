@@ -1,3 +1,4 @@
+import { INTERNAL_SERVER_ERROR } from 'constants/ErrorConstants';
 import { NextFunction, Request, Response } from 'express';
 import { getRemainingTime } from 'utils/GetRemainingTime';
 import { redisUtils } from 'utils/redisUtils/RedisUtils';
@@ -12,7 +13,9 @@ export const signupHandler = async (req: Request, res: Response, next: NextFunct
     try {
         const { id, password } = req.body;
         if (!password || !id) {
-            return res.status(409).json({ message: 'Invalid credentials' });
+            return res
+                .status(400)
+                .json({ message: 'Missing credentials: Please provide both ID and password.' });
         }
 
         const user = await User.findByPk(id);
@@ -28,7 +31,9 @@ export const signupHandler = async (req: Request, res: Response, next: NextFunct
         });
     } catch (error) {
         logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res
+            .status(INTERNAL_SERVER_ERROR.statusCode)
+            .json({ message: INTERNAL_SERVER_ERROR.message });
     }
 };
 
@@ -37,7 +42,9 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
     try {
         const { id, password } = req.body;
         if (!password || !id) {
-            return res.status(409).json({ message: 'Invalid credentials' });
+            return res
+                .status(400)
+                .json({ message: 'Missing credentials: Please provide both ID and password.' });
         }
 
         const user = await User.findByPk(id);
@@ -60,7 +67,9 @@ export const signinHandler = async (req: Request, res: Response, next: NextFunct
         });
     } catch (error) {
         logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res
+            .status(INTERNAL_SERVER_ERROR.statusCode)
+            .json({ message: INTERNAL_SERVER_ERROR.message });
     }
 };
 
@@ -118,11 +127,13 @@ export const getInfoHandler = async (req: AuthRequest, res: Response, next: Next
     try {
         const userId = req.userId;
         if (!userId) {
-            res.status(401).json({ message: 'User does not exist.' });
+            res.status(401).json({ message: 'Missing or invalid user ID.' });
         }
-        return res.send({ userId });
+        return res.status(200).json({ userId, message: 'User ID retrieved successfully.' });
     } catch (error) {
         logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res
+            .status(INTERNAL_SERVER_ERROR.statusCode)
+            .json({ message: INTERNAL_SERVER_ERROR.message });
     }
 };

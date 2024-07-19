@@ -1,3 +1,4 @@
+import { INTERNAL_SERVER_ERROR } from 'constants/ErrorConstants';
 import { NextFunction, Request, Response } from 'express';
 import LoggerFactory from 'logger/Logger.factory';
 import randomString from 'randomstring';
@@ -20,7 +21,9 @@ export const uploadFileHandler = async (req: Request, res: Response, next: NextF
         return res.status(200).json({ message: 'File uploaded successfully!', fileId });
     } catch (error) {
         logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res
+            .status(INTERNAL_SERVER_ERROR.statusCode)
+            .json({ message: INTERNAL_SERVER_ERROR.message });
     }
 };
 
@@ -38,7 +41,9 @@ export const getFileHandler = async (req: Request, res: Response, next: NextFunc
         return res.json(file);
     } catch (error) {
         logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res
+            .status(INTERNAL_SERVER_ERROR.statusCode)
+            .json({ message: INTERNAL_SERVER_ERROR.message });
     }
 };
 
@@ -63,7 +68,9 @@ export const deleteFileHandler = async (req: Request, res: Response, next: NextF
         }
     } catch (error) {
         logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res
+            .status(INTERNAL_SERVER_ERROR.statusCode)
+            .json({ message: INTERNAL_SERVER_ERROR.message });
     }
 };
 
@@ -82,7 +89,9 @@ export const downloadFileHandler = async (req: Request, res: Response, next: Nex
         return res.sendFile(filePath);
     } catch (error) {
         logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res
+            .status(INTERNAL_SERVER_ERROR.statusCode)
+            .json({ message: INTERNAL_SERVER_ERROR.message });
     }
 };
 
@@ -111,7 +120,9 @@ export const updatefileHandler = async (req: Request, res: Response, next: NextF
         return res.status(200).json({ message: 'File updated successfully', file });
     } catch (error) {
         logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res
+            .status(INTERNAL_SERVER_ERROR.statusCode)
+            .json({ message: INTERNAL_SERVER_ERROR.message });
     }
 };
 
@@ -150,6 +161,8 @@ export const getListOfFilesHandler = async (req: Request, res: Response, next: N
         }
     } catch (error) {
         logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res
+            .status(INTERNAL_SERVER_ERROR.statusCode)
+            .json({ message: INTERNAL_SERVER_ERROR.message });
     }
 };

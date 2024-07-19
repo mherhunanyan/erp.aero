@@ -1,3 +1,4 @@
+import { INTERNAL_SERVER_ERROR } from 'constants/ErrorConstants';
 import KibanaLogger from 'logger/Kibana.logger';
 import { Response } from 'express';
 import jwt from 'jsonwebtoken';
@@ -9,6 +10,8 @@ export const handleJwtError = (error: any, res: Response, logger: KibanaLogger) 
         return res.status(403).json({ message: 'Invalid token.' });
     } else {
         logger.error(error as string);
-        return res.status(500).json({ message: 'Internal server error' });
+        return res
+            .status(INTERNAL_SERVER_ERROR.statusCode)
+            .json({ message: INTERNAL_SERVER_ERROR.message });
     }
 };

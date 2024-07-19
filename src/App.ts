@@ -27,13 +27,12 @@ const init = async () => {
         } catch (error) {
             logger.error('process synchronization db was failed', error as string);
         }
+        app.listen(PORT, () => {
+            logger.info('Server is running!');
+        });
     } catch (error) {
         logger.error('Unable to connect to the database:', error as string);
     }
-
-    app.listen(PORT, () => {
-        logger.info('Server is running!');
-    });
 };
 
 init();
