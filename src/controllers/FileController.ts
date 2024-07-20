@@ -10,7 +10,7 @@ export const uploadFileHandler = async (req: Request, res: Response, next: NextF
     const logger = LoggerFactory.getLogger('uploadFileHandler');
     try {
         if (!req.file) {
-            return res.status(400).send('No files were uploaded.');
+            return res.status(400).json({ message: 'No files were uploaded.' });
         }
         const { filename, originalname, mimetype, size } = req.file;
         const extension = path.extname(originalname);
