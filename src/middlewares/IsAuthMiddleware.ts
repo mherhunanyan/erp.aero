@@ -18,18 +18,7 @@ export const isAuthMiddleware = async (req: AuthRequest, res: Response, next: Ne
         }
 
         const decodedAccessToken = jwtUtils.verifyJwtAccessToken(accessToken);
-        const storedRefreshToken = decodedAccessToken.refreshToken;
-        if (!storedRefreshToken) {
-            res.status(401).json({
-                message: 'Refresh token missing or invalid. Please re-authenticate.',
-            });
-        }
-        const decodedRefreshToken = jwtUtils.verifyJwtRefreshToken(storedRefreshToken as string);
-
         req.userId = decodedAccessToken.userId;
-        req.storedRefreshToken = storedRefreshToken;
-        req.accessTokenExpiration = decodedAccessToken.exp;
-        req.refreshTokenExpiration = decodedRefreshToken.exp;
         return next();
     } catch (error) {
         jwtUtils.handleJwtError(error, res, logger);

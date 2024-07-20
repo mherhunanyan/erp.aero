@@ -88,11 +88,8 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
 
         const decodedRefreshToken = jwtUtils.verifyJwtRefreshToken(refreshToken);
         const { userId } = decodedRefreshToken;
-        if (!userId) {
-            return res.status(401).json({ message: 'Wrong Refresh token.' });
-        }
 
-        const newAccessToken = jwtUtils.generateJwtAccessToken(userId, refreshToken);
+        const newAccessToken = jwtUtils.generateJwtAccessToken(userId as string, refreshToken);
         return res.status(200).json({ message: 'token is updated', newAccessToken });
     } catch (error) {
         jwtUtils.handleJwtError(error, res, logger);
@@ -102,18 +99,19 @@ export const siginNewTokenHandler = async (req: Request, res: Response, next: Ne
 export const logoutHandler = async (req: AuthRequest, res: Response, next: NextFunction) => {
     const logger = LoggerFactory.getLogger('logoutHandler');
     try {
-        const accessToken = req.headers.accesstoken;
-        const { storedRefreshToken, accessTokenExpiration, refreshTokenExpiration } = req;
-        if (!storedRefreshToken) {
-            return res
-                .status(200)
-                .json({ message: 'No active session found or already logged out.' });
-        }
+        const accessToken = req.headers.accesstoken as string;
+        const decodedAccessToken = jwtUtils.verifyJwtAccessToken(accessToken);
+
+        const storedRefreshToken = decodedAccessToken.refreshToken as string;
+        const decodedRefreshToken = jwtUtils.verifyJwtRefreshToken(storedRefreshToken as string);
+
+        const { exp: accessTokenExpiration } = decodedAccessToken;
+        const { exp: refreshTokenExpiration } = decodedRefreshToken;
 
         const remainingTimeAccessToken = getRemainingTime(accessTokenExpiration as number);
         const remainingTimeRefreshToken = getRemainingTime(refreshTokenExpiration as number);
 
-        await redisUtils.markTokenAsRevoked(accessToken as string, remainingTimeAccessToken);
+        await redisUtils.markTokenAsRevoked(accessToken, remainingTimeAccessToken);
         await redisUtils.markTokenAsRevoked(storedRefreshToken, remainingTimeRefreshToken);
 
         return res.status(200).json({ message: 'Successfully logged out.' });
@@ -126,9 +124,6 @@ export const getInfoHandler = async (req: AuthRequest, res: Response, next: Next
     const logger = LoggerFactory.getLogger('getInfoHandler');
     try {
         const userId = req.userId;
-        if (!userId) {
-            res.status(401).json({ message: 'Missing or invalid user ID.' });
-        }
         return res.status(200).json({ userId, message: 'User ID retrieved successfully.' });
     } catch (error) {
         logger.error(error as string);
